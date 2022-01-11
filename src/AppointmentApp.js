@@ -12,21 +12,37 @@ import SnackBar from "material-ui/Snackbar";
 import Card from "material-ui/Card";
 import { Step, Stepper, StepLabel, StepContent } from "material-ui/Stepper";
 import { RadioButton, RadioButtonGroup } from "material-ui/RadioButton";
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
 import axios from "axios";
+import AppointmentStepper from "./AppointmentSteper";
+import Modal from "@mui/material/Modal";
+import Box from "@mui/material/Box";
 
 const API_BASE = "http://localhost:9000/";
 
 const timeslots = [
-    '9:00 am - 9:30 am',
-    '9:30 am - 10:00 am',
-    '10:00 am - 10:30 am',
-    '10:30 am - 11:00 am',
-    '11:00 am - 11:30 am',
-    '11:30 am - 12:00 pm',
-]
+  "9:00 am - 9:30 am",
+  "9:30 am - 10:00 am",
+  "10:00 am - 10:30 am",
+  "10:30 am - 11:00 am",
+  "11:00 am - 11:30 am",
+  "11:30 am - 12:00 pm",
+];
+
+const style = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  maxWidth: "80%",
+  margin: "20px auto auto",
+  bgcolor: "background.paper",
+  border: "2px solid #000",
+  boxShadow: 24,
+  p: 4,
+};
 
 class AppointmentApp extends Component {
   constructor(props, context) {
@@ -194,51 +210,37 @@ class AppointmentApp extends Component {
   }
   renderAppointmentTimes() {
     if (!this.state.isLoading) {
-        return timeslots.map((slot) => {
-            return (
-                <RadioButton
-                label={slot}
-                key={slot}
-                value={slot}
-                style={{
+        const slots = [...Array(10).keys()];
+        return slots.map((slot) => {
+          const appointmentDateString = moment(this.state.appointmentDate).format(
+            "YYYY-DD-MM"
+          );
+          const time1 = moment().hour(9).minute(0).add(slot, "hours");
+          const time2 = moment()
+            .hour(9)
+            .minute(0)
+            .add(slot + 1, "hours");
+          const scheduleDisabled = this.state.schedule[appointmentDateString]
+            ? this.state.schedule[
+                moment(this.state.appointmentDate).format("YYYY-DD-MM")
+              ][slot]
+            : false;
+          const meridiemDisabled = this.state.appointmentMeridiem
+            ? time1.format("a") === "am"
+            : time1.format("a") === "pm";
+          return (
+            <RadioButton
+              label={time1.format("h:mm a") + " - " + time2.format("h:mm a")}
+              key={slot}
+              value={slot}
+              style={{
                 marginBottom: 15,
-                
-                }}
-                
+                display: meridiemDisabled ? "none" : "inherit",
+              }}
+              disabled={scheduleDisabled || meridiemDisabled}
             />
-            )
-        })
-    //   const slots = [...Array(10).keys()];
-    //   return slots.map((slot) => {
-    //     const appointmentDateString = moment(this.state.appointmentDate).format(
-    //       "YYYY-DD-MM"
-    //     );
-    //     const time1 = moment().hour(9).minute(0).add(slot, "hours");
-    //     const time2 = moment()
-    //       .hour(9)
-    //       .minute(0)
-    //       .add(slot + 1, "hours");
-    //     const scheduleDisabled = this.state.schedule[appointmentDateString]
-    //       ? this.state.schedule[
-    //           moment(this.state.appointmentDate).format("YYYY-DD-MM")
-    //         ][slot]
-    //       : false;
-    //     const meridiemDisabled = this.state.appointmentMeridiem
-    //       ? time1.format("a") === "am"
-    //       : time1.format("a") === "pm";
-    //     return (
-    //       <RadioButton
-    //         label={time1.format("h:mm a") + " - " + time2.format("h:mm a")}
-    //         key={slot}
-    //         value={slot}
-    //         style={{
-    //           marginBottom: 15,
-    //           display: meridiemDisabled ? "none" : "inherit",
-    //         }}
-    //         disabled={scheduleDisabled || meridiemDisabled}
-    //       />
-    //     );
-    //   });
+          );
+        });
     } else {
       return null;
     }
@@ -315,24 +317,88 @@ class AppointmentApp extends Component {
       <div>
         <AppBar
           title="ADEVA"
-          className='no-bg'
+          className="no-bg"
           position="static"
           showMenuIconButton={false}
         >
           <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            News
-          </Typography>
-          <Button color="inherit">Login</Button>
+            <Button
+              variant="outlined"
+              style={{ color: "#FFF" }}
+              color="inherit"
+            >
+              Book Now
+            </Button>
           </Toolbar>
         </AppBar>
-        <section
+        <BasicModal
+            smallScreen={this.state.smallScreen}
+            stepIndex={this.state.stepIndex}
+            DatePickerExampleSimple={this.DatePickerExampleSimple}
+            data={this.state.data}
+            contactFormFilled={contactFormFilled}
+          />
+        {/* <section
           style={{
             maxWidth: !smallScreen ? "80%" : "100%",
             margin: "auto",
             marginTop: !smallScreen ? 20 : 0,
           }}
         >
+          <BasicModal
+            smallScreen={this.state.smallScreen}
+            stepIndex={this.state.stepIndex}
+            DatePickerExampleSimple={this.DatePickerExampleSimple}
+            data={this.state.data}
+            contactFormFilled={contactFormFilled}
+          />
+
+          <Dialog
+            modal={true}
+            open={confirmationModalOpen}
+            actions={modalActions}
+            title="Confirm your appointment"
+          >
+            {this.renderAppointmentConfirmation()}
+          </Dialog>
+          <SnackBar
+            open={confirmationSnackbarOpen || isLoading}
+            message={
+              isLoading ? "Loading... " : data.confirmationSnackbarMessage || ""
+            }
+            autoHideDuration={10000}
+            onRequestClose={() =>
+              this.setState({ confirmationSnackbarOpen: false })
+            }
+          />
+        </section> */}
+      </div>
+    );
+  }
+}
+
+const BasicModal = (props) => {
+  const {
+    smallScreen,
+    stepIndex,
+    DatePickerExampleSimple,
+    data,
+    contactFormFilled,
+  } = props;
+  const [open, setOpen] = React.useState(true);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  return (
+    <div>
+      <Button onClick={handleOpen}>Open modal</Button>
+      <Modal
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="modal-modal-title"
+        aria-describedby="modal-modal-description"
+      >
+        <Box sx={style}>
           <Card
             style={{
               padding: "12px 12px 25px 12px",
@@ -459,27 +525,9 @@ class AppointmentApp extends Component {
               </Step>
             </Stepper>
           </Card>
-          <Dialog
-            modal={true}
-            open={confirmationModalOpen}
-            actions={modalActions}
-            title="Confirm your appointment"
-          >
-            {this.renderAppointmentConfirmation()}
-          </Dialog>
-          <SnackBar
-            open={confirmationSnackbarOpen || isLoading}
-            message={
-              isLoading ? "Loading... " : data.confirmationSnackbarMessage || ""
-            }
-            autoHideDuration={10000}
-            onRequestClose={() =>
-              this.setState({ confirmationSnackbarOpen: false })
-            }
-          />
-        </section>
-      </div>
-    );
-  }
-}
+        </Box>
+      </Modal>
+    </div>
+  );
+};
 export default AppointmentApp;
